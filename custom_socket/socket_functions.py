@@ -15,7 +15,7 @@ import datetime
 import json
 import sys
 import os
-from pysocket import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
+#from custom_socket import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
                 
 #   Base Class, probably not going to be directly referencing this..
 class custom_socket(threading.Thread):
@@ -157,9 +157,12 @@ class custom_socket(threading.Thread):
         #full_cmds = []
         return return_var
     
-    def send_str(self,send_str=None):
+    def send_str(self,send_str=None,clients=[]):
         try:
-            for conn in self.clients.values():
+            if len(clients) == 0:
+                clients = self.clients.values()
+                
+            for conn in clients:
                 if send_str:    #<  Otherwise just clearing queues..
                     try:
                         self.send_queue[conn].append('%s%s'%(send_str,self.END_DELIM))
