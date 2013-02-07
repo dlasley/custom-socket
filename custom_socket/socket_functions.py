@@ -11,11 +11,12 @@ import select
 import socket
 import socks
 import threading
+import signal
 import datetime
 import json
 import sys
 import os
-#from custom_socket import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
+from custom_socket import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
                 
 #   Base Class, probably not going to be directly referencing this..
 class custom_socket(threading.Thread):
@@ -38,7 +39,11 @@ class custom_socket(threading.Thread):
         self.current_sends = []
         self.locked = threading.Lock()
         self.clear_cache()
-
+        
+    def __del__(self):
+        ##  Kill active sockets
+        self.kill_server()
+    
     def passing(self, data):
         pass
 
@@ -64,6 +69,13 @@ class custom_socket(threading.Thread):
     
     def error(self, info):
         logging.debug(str(info))
+        
+    def kill_server(self, signum=None, frame=None):
+        logging.debug('Exiting Server..')
+        for client in self.clients.values(): #< Kill connections
+            client.close()
+        self.server.close()
+        exit(0)
         
     def _eval_cmd(self,cmd=None,args=[]):
         ##  Eval incoming commands against self.args, sends response to conn
@@ -219,10 +231,9 @@ class custom_server(custom_socket):
         self.server.bind((HOST, PORT))
         logging.debug('Listening on %s:%s' % (HOST,PORT))
         self.server.listen(5)
-        
-    def __del__(self):
-        ##  Kill active sockets
-        self.server.close()
+        self.daemon = True
+        # Keyboard interrupts
+        signal.signal(signal.SIGINT, self.kill_server)
 
     def run(self):
         while 1:
@@ -265,6 +276,9 @@ class custom_client(custom_socket):
             socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, PROXY_HOST, PROXY_PORT)
             socket.socket = socks.socksocket
         self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        #self.daemon = True
+        # Keyboard interrupts
+        signal.signal(signal.SIGINT, self.kill_server)
         self.connect()
         
     def connect(self, timeout=None, login_timeout=3):
