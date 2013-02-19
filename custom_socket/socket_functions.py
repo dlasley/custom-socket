@@ -9,7 +9,6 @@
 #   @requires-python-packages   socksipy-branch
 import select
 import socket
-import socks
 import threading
 import signal
 import datetime
@@ -102,7 +101,7 @@ class custom_socket(threading.Thread):
         except KeyError:
             error_msg = json.dumps({
                 'cmd' : 'error',
-                'msg' : 'Not a valid command. Commands are: %s[>#!>]'%(', '.join(self.args.keys()))
+                'msg' : 'Not a valid command (%s,%s). Commands are: %s[>#!>]'%(str(cmd),str(args),', '.join(self.args.keys()))
             })
             self.send_str(  error_msg )
             exit()
@@ -194,7 +193,7 @@ class custom_socket(threading.Thread):
                                 elif sent < len(self.END_DELIM):
                                     total_sent += conn.send( bytearray(self.END_DELIM, 'utf-8') )
                                 total_sent += sent
-                            logging.debug('Sent %d' % (sent))
+                            logging.debug('Sent %d ' % (sent) + msg)
                     except IndexError:
                         self.current_sends.pop(self.current_sends.index(conn)) #<   Remove Sending Flag
                         self.locked.release()
@@ -273,6 +272,7 @@ class custom_client(custom_socket):
         #   @param  Int proxy_port Proxy port
         super(custom_client, self).__init__(args, no_cache)
         if PROXY_HOST:
+            import socks
             socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, PROXY_HOST, PROXY_PORT)
             socket.socket = socks.socksocket
         self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
