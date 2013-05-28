@@ -85,10 +85,13 @@ class custom_socket(threading.Thread):
         try:
             if cmd is None:
                 if args is not None:
-                    self.args[args['cmd']]( args )
+                    #   Store and strip cmd from args, then call.
+                    cmd = args['cmd']
+                    del args['cmd'] 
+                    self.args[cmd]( args )
                 else:
                     logging.debug( 'Empty command/args')
-            else:
+            else: #< Legacy, string based cmds
                 stringified = '%s%s' % (cmd,repr(args))
                 logging.debug( 'Cache Function: %s  %s' % (stringified,cmd))
                 if self.memory_handler(stringified) and cmd not in self.no_cache:
