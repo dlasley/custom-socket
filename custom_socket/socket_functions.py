@@ -15,13 +15,22 @@ import datetime
 import json
 import sys
 import os
-from . import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
+from . import logging
                 
-#   Base Class, probably not going to be directly referencing this..
 class custom_socket(threading.Thread):
-    END_DELIM = u'[>#!>]'
-    RECV_CHUNKS = 4096
-    def __init__(self, add_args={}, no_cache=[]):
+    '''
+        Base socket class
+            This doesn't really do much by itself, but is subclassed
+    '''
+    END_DELIM = chr(0004) #u'[>#!>]'    #<  End of transmission delimiter
+    RECV_CHUNKS = 4096  #<  Socket buffer
+    def __init__(self, add_args={}, no_cache=[], ):
+        '''
+            Initiate the socket
+
+            @param  add_args    dict    Additional cmds to add to the socket. Key=name, val=callback
+            @param  no_cache    list    Disable caching for these commands
+        '''
         super(custom_socket, self).__init__()
         self.args = {   #<  Arg:[function,*Args]
             'exit'          :   exit,
@@ -39,17 +48,24 @@ class custom_socket(threading.Thread):
         self.locked = threading.Lock()
         self.clear_cache()
         
-    def __del__(self):
-        ##  Kill active sockets
+    def __del__(self, ):
+        ''' Kill Active Sockets '''
         self.kill_server()
     
-    def passing(self, data):
+    def passing(self, data, ):
+        ''' Generic Do Nothing Callback '''
         pass
 
-    def error(self, error_info):
+    def error(self, error_info, ):
+        ''' Generic Error Callback  '''
         raise RuntimeError(error_info['msg'])
     
-    def clear_cache(self, cache_id=None):
+    def clear_cache(self, cache_id=None, ):
+        '''
+            Clear The cache
+            
+            @param  cache_id    str Cache ID to clear
+        '''
         logging.debug('Clearing %s from cache' % repr(cache_id))
         if cache_id:
             try:
@@ -60,27 +76,32 @@ class custom_socket(threading.Thread):
             self.SHORT_TERM_MEMORY = {}
         self.send_str(json.dumps({'cmd':'pass',}))
 
-    def handshake(self, info):
+    def handshake(self, info, ):
+        ''' Initial Handshake   '''
         self.send_str(json.dumps({'cmd':'hello','msg':'Handshaking...'}))
     
-    def hello(self, info):
+    def hello(self, info, ):
+        ''' Handshake response  '''
         logging.debug('Handshake received.')
-    
-    def error(self, info):
-        logging.debug(str(info))
         
-    def kill_server(self, signum=None, frame=None):
+    def kill_server(self, signum=None, frame=None, ):
+        '''
+            Close all connections
+            Not sure what these params are for
+        '''
         logging.debug('Exiting Server..')
         for client in self.clients.values(): #< Kill connections
             client.close()
         self.server.close()
-        exit(0)
         
-    def _eval_cmd(self,cmd=None,args=[]):
-        ##  Eval incoming commands against self.args, sends response to conn
-        #   @param  Str     cmd     Command to run
-        #   @param  socket  conn    socket connection to send data on
-        #   @param  List    args    List of args for cmd
+    def _eval_cmd(self, cmd=None, args=[], ):
+        '''
+            Eval incoming commands against self.args, sends response to conn
+            
+            @param  Str     cmd     Command to run
+            @param  socket  conn    socket connection to send data on
+            @param  List    args    List of args for cmd
+        '''
         logging.debug('Eval Command %s' % repr([cmd,args]))
         try:
             if cmd is None:
@@ -104,12 +125,20 @@ class custom_socket(threading.Thread):
         except KeyError:
             error_msg = json.dumps({
                 'cmd' : 'error',
-                'msg' : 'Not a valid command (%s,%s). Commands are: %s[>#!>]'%(str(cmd),str(args),', '.join(self.args.keys()))
+                'msg' : '"(%s,%s)" is not a valid command. Commands are: %s[>#!>]'%(str(cmd),str(args),', '.join(self.args.keys()))
             })
             self.send_str(  error_msg )
             exit()
     
-    def recv(self, _socket, qt=False):
+    def recv(self, _socket, qt=False, ):
+        '''
+            Receive Data
+            
+            @param  _socket socket.socket   Socket object to manipulate
+            @param  qt      bool            QT Thread?
+            
+            @return bool    Successfully received?
+        '''
         rcvd_data = []
         full_cmds = []
         no_data = 0 
@@ -171,7 +200,13 @@ class custom_socket(threading.Thread):
         #full_cmds = []
         return return_var
     
-    def send_str(self,send_str=None,clients=[]):
+    def send_str(self, send_str=None, clients=[], ):
+        '''
+            Send string to remote clients
+            
+            @param  send_str    str     String to send
+            @param  clients     list    List of clients to send to. Empty for all
+        '''
         try:
             if len(clients) == 0:
                 clients = self.clients.values()
@@ -205,7 +240,15 @@ class custom_socket(threading.Thread):
             logging.debug('No clients connected')
             pass
                       
-    def memory_handler(self, cache_id, data=None):
+    def memory_handler(self, cache_id, data=None, ):
+        '''
+            Either add to cache, or return from cache if already existing
+            
+            @param  cache_id    str Cache ID
+            @param  data        str Data to add - None if pulling from cache
+            
+            @return mixed   If data, return True on save. If no data, return cache value or False if non-existant
+        '''
         if data:
             logging.debug('Caching %s' % cache_id)
             self.SHORT_TERM_MEMORY[cache_id] = data
@@ -221,23 +264,36 @@ class custom_socket(threading.Thread):
             
 
 class custom_server(custom_socket):
-    def __init__(self, arg_list={}, no_cache=[]):
-        ##  Init
-        #   @param  Int     port        Port to run on
-        #   @param  Dict    arg_list    Socket arg list
+    '''
+        Custom server class
+    '''
+    def __init__(self, host='localhost', port=8888,
+                 arg_list={}, no_cache=[], ):
+        '''
+            Initiate server variables
+            
+            @param  host        str     Host to bind to
+            @param  port        int     Port (1-65535)
+            @param  arg_list    dict    Extra argument list
+            @param  no_cache    list    Do not cache these commands
+        '''
         super(custom_server, self).__init__(arg_list, no_cache)
+        self.host, self.port, = host, port
         self.clients = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.setblocking(0)
-        self.server.bind((HOST, PORT))
-        logging.debug('Listening on %s:%s' % (HOST,PORT))
+        self.server.bind((self.host, self.port))
+        logging.debug('Listening on %s:%s' % (self.host, self.port))
         self.server.listen(5)
         self.daemon = True
         # Keyboard interrupts
         signal.signal(signal.SIGINT, self.kill_server)
 
-    def run(self):
+    def run(self, ):
+        '''
+            Main loop thread
+        '''
         while 1:
             try:
                 client_vals = self.clients.values()
@@ -268,27 +324,48 @@ class custom_server(custom_socket):
         #        super(custom_server,self).send_str(self,client,send_str)   
 
 class custom_client(custom_socket):
-    def __init__(self, args={}, no_cache=[]):
-        ##  Init a socket as self.socket to host on port. Use proxy if needed
-        #  
-        #   @param  Str proxy_host  Proxy host
-        #   @param  Int proxy_port Proxy port
+    '''
+        Custom client class
+    '''
+    def __init__(self, host='localhost', port=8888, proxy_host=None,
+                 proxy_port=None, args={}, no_cache=[], ):
+        '''
+            Init a socket as self.socket to host on port. Use proxy if needed
+          
+            @param  host        str     Host to bind to
+            @param  port        int     POrt
+            @param  proxy_host  str     SOCKS proxy host
+            @param  proxy_port  int     SOCKS proxy port
+            @param  args        dict    Additional socket arguments
+            @param  no_cahce    list    Don't cache these commands
+        '''
         super(custom_client, self).__init__(args, no_cache)
-        if PROXY_HOST:
+        self.host, self.port, = host, port
+        if proxy_host:
             import socks
-            socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, PROXY_HOST, PROXY_PORT)
+            socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS4, proxy_host, proxy_port)
             socket.socket = socks.socksocket
         self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         #self.daemon = True
         # Keyboard interrupts
         signal.signal(signal.SIGINT, self.kill_server)
-        self.connect()
+        self.connect(self.host, self.port)
         
-    def connect(self, timeout=None, login_timeout=3):
+    def connect(self, host, port, timeout=None, login_timeout=3, ):
+        '''
+            Connect to remote server
+            
+            @param  host            str Host
+            @param  port            int port
+            @param  timeout         int Timeout
+            @param  login_timeout   int Timeout specifically for login function
+            
+            @return Bool    Connected?
+        '''
         self.socket.settimeout(login_timeout)
         try:
-            logging.debug('Connecting to %s:%s' % (HOST,PORT))
-            self.socket.connect((HOST,PORT))
+            logging.debug('Connecting to %s:%s' % (host, port))
+            self.socket.connect((host, post))
         except socket.error:
             logging.debug('Failed to establish connection to server.')
             return False
@@ -296,18 +373,28 @@ class custom_client(custom_socket):
         self.clients = {self.socket.fileno():self.socket}
         return True
     
-    def send_str(self,send_str=None):
+    def send_str(self, send_str=None, ):
+        '''
+            Send str to server
+            
+            @param  send_str    str String to send
+            
+            @return custom_socket.send_str()
+        '''
         try:
             return super(custom_client, self).send_str(send_str)
         except socket.error:
             self.connect()
             return super(custom_client, self).send_str(send_str)
     
-    def recv(self):
+    def recv(self, ):
+        '''
+            Receive data from server. 
+        '''
         recv_fails = 0
         while recv_fails<2:
             if not super(custom_client,self).recv(self.socket, True):
                 recv_fails +=1
-                self.connect()
+                self.connect(self.host, self.port)
             else:
                 recv_fails = 0
