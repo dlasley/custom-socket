@@ -15,7 +15,7 @@ import datetime
 import json
 import sys
 import os
-from custom_socket import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
+from . import HOST,PORT,PROXY_HOST,PROXY_PORT,logging
                 
 #   Base Class, probably not going to be directly referencing this..
 class custom_socket(threading.Thread):
