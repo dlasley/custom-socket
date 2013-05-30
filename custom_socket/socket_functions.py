@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 ##  GUI classes for make_mkv_client
 #   @author     David Lasley, dave -at- dlasley -dot- net
-#   @website    http://code.google.com/p/pysocket/
-#   @package    pysocket
+#   @website    https://dlasley.net/repos/custom_socket
+#   @package    custom_socket
 #   @license    GPLv3
 #   @version    $Id: socket_functions.py 99 2013-01-31 22:24:22Z dave@dlasley.net $
 #
