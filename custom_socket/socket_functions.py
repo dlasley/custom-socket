@@ -163,7 +163,7 @@ class custom_socket(threading.Thread):
                         split_chunks = data_chunk.split(self.END_DELIM)
                         rcvd_data.append(split_chunks.pop(0))
                         rcvd_data = [''.join(rcvd_data)]
-                        full_cmds = full_cmds + rcvd_data + split_chunks#[:-1]
+                        full_cmds = full_cmds + rcvd_data + split_chunks[:-1] #< Don't second guess this again
                         rcvd_data = [ split_chunks[-1] ] 
                         split_chunks = []
                         no_data = 0
