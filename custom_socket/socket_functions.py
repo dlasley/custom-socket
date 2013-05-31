@@ -22,7 +22,7 @@ class custom_socket(threading.Thread):
         Base socket class
             This doesn't really do much by itself, but is subclassed
     '''
-    END_DELIM = u'[>#!>]'#chr(0004) #u'[>#!>]'    #<  End of transmission delimiter
+    END_DELIM = chr(0004) #<  End of transmission delimiter
     RECV_CHUNKS = 4096  #<  Socket buffer
     def __init__(self, add_args={}, no_cache=[], ):
         '''
@@ -74,11 +74,11 @@ class custom_socket(threading.Thread):
                 pass
         else:
             self.SHORT_TERM_MEMORY = {}
-        self.send_str(json.dumps({'cmd':'pass',}))
+        self.send_str(json.dumps({'cmd':'pass', }))
 
     def handshake(self, info, ):
         ''' Initial Handshake   '''
-        self.send_str(json.dumps({'cmd':'hello','msg':'Handshaking...'}))
+        self.send_str(json.dumps({'cmd':'hello', 'msg':'Handshaking...', }))
     
     def hello(self, info, ):
         ''' Handshake response  '''
@@ -104,8 +104,6 @@ class custom_socket(threading.Thread):
         '''
         logging.debug('Eval Command %s' % repr([cmd,args]))
         try:
-            logging.debug(cmd)
-            logging.debug(repr(args))
             if cmd is None:
                 if args is not None:
                     #   Store and strip cmd from args, then call.
@@ -139,18 +137,18 @@ class custom_socket(threading.Thread):
             
             @return bool    Successfully received?
         '''
-        rcvd_data = []
-        full_cmds = []
-        no_data = 0 
+        rcvd_data,full_cmds = [], []
+        no_data = 0
+        end_delim_len = len(self.END_DELIM)
         while no_data < 5:
-            logging.debug( 'Receiving Data...')
+            logging.debug('Receiving Data...')
             try:
                 data_chunk = _socket.recv(self.RECV_CHUNKS).decode('utf-8')
                 if not data_chunk:    #<  Lost addr
-                    logging.debug('No data..%s' %repr(data_chunk))
+                    logging.debug('No data..%s' % repr(data_chunk))
                     no_data += 1
                 elif self.END_DELIM in data_chunk:
-                    if data_chunk[-6:] == self.END_DELIM: #<  End of command
+                    if data_chunk[-end_delim_len:] == self.END_DELIM: #<  End of command
                         split_chunks = data_chunk.split(self.END_DELIM)
                         rcvd_data.append(split_chunks.pop(0))
                         rcvd_data = [''.join(rcvd_data)]
@@ -165,7 +163,7 @@ class custom_socket(threading.Thread):
                         split_chunks = data_chunk.split(self.END_DELIM)
                         rcvd_data.append(split_chunks.pop(0))
                         rcvd_data = [''.join(rcvd_data)]
-                        full_cmds = full_cmds + rcvd_data + split_chunks[:-1]
+                        full_cmds = full_cmds + rcvd_data + split_chunks#[:-1]
                         rcvd_data = [ split_chunks[-1] ] 
                         split_chunks = []
                         no_data = 0
