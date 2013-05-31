@@ -22,7 +22,7 @@ class custom_socket(threading.Thread):
         Base socket class
             This doesn't really do much by itself, but is subclassed
     '''
-    END_DELIM = chr(0004) #u'[>#!>]'    #<  End of transmission delimiter
+    END_DELIM = u'[>#!>]'#chr(0004) #u'[>#!>]'    #<  End of transmission delimiter
     RECV_CHUNKS = 4096  #<  Socket buffer
     def __init__(self, add_args={}, no_cache=[], ):
         '''
@@ -104,12 +104,12 @@ class custom_socket(threading.Thread):
         '''
         logging.debug('Eval Command %s' % repr([cmd,args]))
         try:
+            logging.debug(cmd)
+            logging.debug(repr(args))
             if cmd is None:
                 if args is not None:
                     #   Store and strip cmd from args, then call.
-                    cmd = args['cmd']
-                    del args['cmd'] 
-                    self.args[cmd]( args )
+                    self.args[args['cmd']]( args )
                 else:
                     logging.debug( 'Empty command/args')
             else: #< Legacy, string based cmds
@@ -125,7 +125,7 @@ class custom_socket(threading.Thread):
         except KeyError:
             error_msg = json.dumps({
                 'cmd' : 'error',
-                'msg' : '"(%s,%s)" is not a valid command. Commands are: %s[>#!>]'%(str(cmd),str(args),', '.join(self.args.keys()))
+                'msg' : '"(%s, %s)" is not a valid command. Commands are: "%s"'%(str(cmd),str(args),', '.join(self.args.keys()))
             })
             self.send_str(  error_msg )
             exit()
@@ -231,7 +231,6 @@ class custom_socket(threading.Thread):
                                 elif sent < len(self.END_DELIM):
                                     total_sent += conn.send( bytearray(self.END_DELIM, 'utf-8') )
                                 total_sent += sent
-                            logging.debug('Sent %d ' % (sent) + msg)
                     except IndexError:
                         self.current_sends.pop(self.current_sends.index(conn)) #<   Remove Sending Flag
                         self.locked.release()
@@ -365,7 +364,7 @@ class custom_client(custom_socket):
         self.socket.settimeout(login_timeout)
         try:
             logging.debug('Connecting to %s:%s' % (host, port))
-            self.socket.connect((host, post))
+            self.socket.connect((host, port))
         except socket.error:
             logging.debug('Failed to establish connection to server.')
             return False
