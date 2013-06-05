@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-##  GUI classes for make_mkv_client
+##  Custom socket classes
 #   @author     David Lasley, dave -at- dlasley -dot- net
-#   @website    https://dlasley.net/repos/custom_socket
+#   @website    https://code.google.com/p/custom-socket/
 #   @package    custom_socket
 #   @license    GPLv3
 #   @version    $Id: socket_functions.py 99 2013-01-31 22:24:22Z dave@dlasley.net $
@@ -102,7 +102,7 @@ class custom_socket(threading.Thread):
             @param  socket  conn    socket connection to send data on
             @param  List    args    List of args for cmd
         '''
-        logging.debug('Eval Command %s' % repr([cmd,args]))
+        logging.debug('Eval Command')# %s' % repr([cmd,args]))
         try:
             if cmd is None:
                 if args is not None:
@@ -144,6 +144,7 @@ class custom_socket(threading.Thread):
             logging.debug('Receiving Data...')
             try:
                 data_chunk = _socket.recv(self.RECV_CHUNKS).decode('utf-8')
+                logging.debug(data_chunk)
                 if not data_chunk:    #<  Lost addr
                     logging.debug('No data..%s' % repr(data_chunk))
                     no_data += 1
@@ -192,11 +193,16 @@ class custom_socket(threading.Thread):
                     self._eval_cmd(cmd,args)
                 else:
                     logging.debug('Threading')
-                    t = threading.Thread(target=self._eval_cmd,name=str(datetime.datetime.now),args=(cmd,args))
+                    t = threading.Thread(target=self._eval_cmd,
+                                         name=str(datetime.datetime.now),
+                                         args=(cmd,args), )
                     t.daemon = True
                     t.start()
         #full_cmds = []
-        return return_var
+        try:
+            return return_var
+        except UnboundLocalError:
+            return None
     
     def send_str(self, send_str=None, clients=[], ):
         '''
@@ -209,30 +215,20 @@ class custom_socket(threading.Thread):
             if len(clients) == 0:
                 clients = self.clients.values()
                 
+            logging.debug('Sending to %s' % repr(clients))
+            
+            msg = send_str + self.END_DELIM
             for conn in clients:
-                if send_str:    #<  Otherwise just clearing queues..
-                    try:
-                        self.send_queue[conn].append('%s%s'%(send_str,self.END_DELIM))
-                    except KeyError:
-                        self.send_queue[conn] = ['%s%s'%(send_str,self.END_DELIM)] 
-                if conn not in self.current_sends:
-                    self.current_sends.append(conn) #<  Set Sending flag
-                    self.locked.acquire()
-                    try:
-                        while 1:
-                            total_sent = 0
-                            msg = self.send_queue[conn].pop(0)
-                            while total_sent < len(msg):
-                                sent = conn.send( bytearray(msg[total_sent:], 'utf-8') )
-                                if sent == 0:
-                                    raise RuntimeError("socket connection lost")
-                                elif sent < len(self.END_DELIM):
-                                    total_sent += conn.send( bytearray(self.END_DELIM, 'utf-8') )
-                                total_sent += sent
-                    except IndexError:
-                        self.current_sends.pop(self.current_sends.index(conn)) #<   Remove Sending Flag
-                        self.locked.release()
-                        return
+                self.locked.acquire()
+                total_sent = 0
+                while total_sent < len(msg):
+                    sent = conn.send( bytearray(msg[total_sent:], 'utf-8') )
+                    if sent == 0:
+                        raise RuntimeError("socket connection lost")
+                    elif sent < len(self.END_DELIM):
+                        total_sent += conn.send( bytearray(self.END_DELIM, 'utf-8') )
+                    total_sent += sent
+                self.locked.release()
         except AttributeError: #< No clients
             logging.debug('No clients connected')
             pass
@@ -305,6 +301,7 @@ class custom_server(custom_socket):
                     conn, address = s.accept()
                     logging.debug('Connection...')
                     self.clients[conn.fileno()] = conn
+                    self.args['hello'](conn)
                 else:
                     logging.debug('Attempting recv..')
                     #self.recv(s)
@@ -325,7 +322,7 @@ class custom_client(custom_socket):
         Custom client class
     '''
     def __init__(self, host='localhost', port=8888, proxy_host=None,
-                 proxy_port=None, args={}, no_cache=[], ):
+                 proxy_port=None, add_args={}, no_cache=[], ):
         '''
             Init a socket as self.socket to host on port. Use proxy if needed
           
@@ -333,10 +330,10 @@ class custom_client(custom_socket):
             @param  port        int     POrt
             @param  proxy_host  str     SOCKS proxy host
             @param  proxy_port  int     SOCKS proxy port
-            @param  args        dict    Additional socket arguments
+            @param  add_args    dict    Additional socket arguments
             @param  no_cahce    list    Don't cache these commands
         '''
-        super(custom_client, self).__init__(args, no_cache)
+        super(custom_client, self).__init__(add_args, no_cache)
         self.host, self.port, = host, port
         if proxy_host:
             import socks
