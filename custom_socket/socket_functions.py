@@ -94,7 +94,7 @@ class custom_socket(threading.Thread):
             client.close()
         self.server.close()
         
-    def _eval_cmd(self, cmd=None, args=[], ):
+    def _eval_cmd(self, cmd=None, args=[], _socket=None, ):
         '''
             Eval incoming commands against self.args, sends response to conn
             
@@ -119,7 +119,10 @@ class custom_socket(threading.Thread):
                     logging.debug( 'Not cached %s' % stringified)
                     data = json.dumps(self.args[cmd]( *args  ) )
                     self.memory_handler( stringified, data )
-                    self.send_str( data )
+                    if _socket is None:    
+                        self.send_str(data)
+                    else:
+                        self.send_str(data, [socket])
         except KeyError:
             error_msg = json.dumps({
                 'cmd' : 'error',
@@ -137,7 +140,7 @@ class custom_socket(threading.Thread):
             
             @return bool    Successfully received?
         '''
-        rcvd_data,full_cmds = [], []
+        rcvd_data, full_cmds = [], []
         no_data = 0
         end_delim_len = len(self.END_DELIM)
         while no_data < 5:
@@ -322,7 +325,7 @@ class custom_client(custom_socket):
         Custom client class
     '''
     def __init__(self, host='localhost', port=8888, proxy_host=None,
-                 proxy_port=None, add_args={}, no_cache=[], ):
+                 proxy_port=None, arg_list={}, no_cache=[], ):
         '''
             Init a socket as self.socket to host on port. Use proxy if needed
           
