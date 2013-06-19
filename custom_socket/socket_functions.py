@@ -336,7 +336,7 @@ class custom_client(custom_socket):
             @param  add_args    dict    Additional socket arguments
             @param  no_cahce    list    Don't cache these commands
         '''
-        super(custom_client, self).__init__(add_args, no_cache)
+        super(custom_client, self).__init__(arg_list, no_cache)
         self.host, self.port, = host, port
         if proxy_host:
             import socks
