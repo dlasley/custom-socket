@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ##  Custom socket classes
 #   @author     David Lasley, dave -at- dlasley -dot- net
-#   @website    https://code.google.com/p/custom-socket/
+#   @website    https://dlasley.net/repos/custom_socket/
 #   @package    custom_socket
 #   @license    GPLv3
 #   @version    $Id: socket_functions.py 99 2013-01-31 22:24:22Z dave@dlasley.net $
