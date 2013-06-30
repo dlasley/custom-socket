@@ -91,8 +91,15 @@ class custom_socket(threading.Thread):
         '''
         logging.debug('Exiting Server..')
         for client in self.clients.values(): #< Kill connections
-            client.close()
-        self.server.close()
+            try:
+                client.close()
+            except Exception:
+                pass
+        try:
+            self.server.close()
+        except Exception:
+            pass
+        exit()
         
     def _eval_cmd(self, cmd=None, args=[], _socket=None, ):
         '''
@@ -275,16 +282,15 @@ class custom_server(custom_socket):
         '''
         super(custom_server, self).__init__(arg_list, no_cache)
         self.host, self.port, = host, port
+        signal.signal(signal.SIGINT, self.kill_server)
         self.clients = {}
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.setblocking(0)
         self.server.bind((self.host, self.port))
         logging.debug('Listening on %s:%s' % (self.host, self.port))
-        self.server.listen(5)
         self.daemon = True
-        # Keyboard interrupts
-        signal.signal(signal.SIGINT, self.kill_server)
+        self.server.listen(5)
 
     def run(self, ):
         '''
